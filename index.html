@@ -1,0 +1,1469 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ciclo Contable - Línea de Tiempo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.2em;
+            margin-bottom: 50px;
+        }
+
+        .timeline {
+            position: relative;
+            padding: 20px 0;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+        }
+
+        .timeline-item {
+            margin-bottom: 60px;
+            position: relative;
+            width: 100%;
+        }
+
+        .timeline-item:nth-child(odd) .timeline-content {
+            margin-left: 0;
+            margin-right: auto;
+            padding-right: 60px;
+            text-align: right;
+        }
+
+        .timeline-item:nth-child(even) .timeline-content {
+            margin-left: auto;
+            margin-right: 0;
+            padding-left: 60px;
+            text-align: left;
+        }
+
+        .timeline-content {
+            width: 45%;
+            position: relative;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .timeline-content:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .timeline-marker {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 30px;
+            background: #ffd700;
+            border: 4px solid white;
+            border-radius: 50%;
+            top: 20px;
+            z-index: 10;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .phase-number {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+
+        .timeline-content h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+
+        .timeline-content p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .click-hint {
+            display: inline-block;
+            background: #ffd700;
+            color: #333;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        /* MODAL STYLES */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.7);
+            animation: fadeIn 0.3s;
+        }
+
+        .modal.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 3% auto;
+            padding: 0;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 900px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: slideDown 0.4s;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 20px 20px 0 0;
+            position: relative;
+        }
+
+        .modal-header h2 {
+            color: white;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .modal-header .phase-tag {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 0.9em;
+        }
+
+        .close {
+            position: absolute;
+            right: 25px;
+            top: 25px;
+            color: white;
+            font-size: 35px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            line-height: 1;
+        }
+
+        .close:hover {
+            transform: rotate(90deg);
+        }
+
+        .modal-body {
+            padding: 40px;
+        }
+
+        .image-container {
+            width: 100%;
+            margin-bottom: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            background: #f8f9fa;
+        }
+
+        .image-example {
+            width: 100%;
+            height: auto;
+            display: block;
+            object-fit: contain;
+            max-height: 500px;
+        }
+
+        .image-placeholder {
+            width: 100%;
+            height: 300px;
+            background: linear-gradient(135deg, #e0e7ff 0%, #f3e7ff 100%);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 30px;
+            border: 3px dashed #667eea;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .image-placeholder img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 15px;
+        }
+
+        .image-placeholder-text {
+            text-align: center;
+            color: #667eea;
+            font-size: 1.1em;
+            padding: 20px;
+        }
+
+        .image-placeholder-text::before {
+            content: "🖼️";
+            display: block;
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .modal-section {
+            margin-bottom: 30px;
+        }
+
+        .modal-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+            border-bottom: 2px solid #e0e7ff;
+            padding-bottom: 10px;
+        }
+
+        .modal-section p {
+            color: #555;
+            line-height: 1.8;
+            margin-bottom: 15px;
+        }
+
+        .documents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .document-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            transition: 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .document-card:hover {
+            border-color: #667eea;
+            transform: translateY(-5px);
+        }
+
+        .document-card::before {
+            content: "📄";
+            display: block;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .info-box {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .info-box h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .info-box p {
+            color: #555;
+            line-height: 1.8;
+        }
+
+        .periods {
+            background: #e3f2fd;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            border-left: 4px solid #2196f3;
+        }
+
+        .periods strong {
+            color: #1976d2;
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .highlight-box strong {
+            color: #f57c00;
+        }
+
+        /* BOTONES DE NAVEGACIÓN EN MODALES */
+        .modal-navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            background: #f8f9fa;
+            border-radius: 0 0 20px 20px;
+            gap: 20px;
+        }
+
+        .nav-button {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .nav-button:active {
+            transform: translateY(0);
+        }
+
+        .nav-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            opacity: 0.5;
+            box-shadow: none;
+        }
+
+        .nav-button:disabled:hover {
+            transform: none;
+        }
+
+        .nav-button.prev::before {
+            content: "←";
+            font-size: 1.2em;
+        }
+
+        .nav-button.next::after {
+            content: "→";
+            font-size: 1.2em;
+        }
+
+        .modal-counter {
+            text-align: center;
+            color: #667eea;
+            font-weight: bold;
+            font-size: 1em;
+        }
+
+        /* Botón de impresión */
+        .print-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .print-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 28px rgba(102, 126, 234, 0.5);
+        }
+
+        .print-button::before {
+            content: "🖨️";
+            font-size: 1.3em;
+        }
+
+        /* ESTILOS PARA IMPRESIÓN PDF */
+        @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            body {
+                background: white !important;
+                padding: 10px !important;
+                margin: 0 !important;
+            }
+
+            .container {
+                max-width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+
+            h1 {
+                color: #667eea !important;
+                text-shadow: none !important;
+                page-break-after: avoid !important;
+                margin-bottom: 10px !important;
+                font-size: 2em !important;
+            }
+
+            .subtitle {
+                color: #555 !important;
+                page-break-after: avoid !important;
+                margin-bottom: 20px !important;
+            }
+
+            .info-box {
+                box-shadow: none !important;
+                border: 2px solid #667eea !important;
+                page-break-inside: avoid !important;
+                margin-bottom: 20px !important;
+                background: white !important;
+                padding: 20px !important;
+            }
+
+            .info-box h2 {
+                color: #667eea !important;
+            }
+
+            .periods {
+                background: #e3f2fd !important;
+                border-left: 4px solid #2196f3 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            /* OCULTAR ELEMENTOS NO NECESARIOS PARA IMPRESIÓN */
+            .print-button,
+            .click-hint,
+            .close,
+            .modal-navigation {
+                display: none !important;
+            }
+
+            /* ESTILOS PARA LÍNEA DEL TIEMPO EN IMPRESIÓN - COMPACTO */
+            .timeline {
+                display: block !important;
+                position: relative !important;
+                padding: 10px 0 !important;
+                margin-bottom: 0 !important;
+                page-break-inside: avoid !important;
+            }
+
+            .timeline::before {
+                display: none !important;
+            }
+
+            .timeline-item {
+                display: block !important;
+                margin-bottom: 5px !important;
+                position: relative !important;
+                width: 100% !important;
+                page-break-inside: avoid !important;
+                page-break-after: avoid !important;
+            }
+
+            .timeline-item:last-child {
+                margin-bottom: 0 !important;
+            }
+
+            .timeline-item:nth-child(odd) .timeline-content,
+            .timeline-item:nth-child(even) .timeline-content {
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 12px 15px !important;
+                text-align: left !important;
+                position: relative !important;
+                background: white !important;
+                border: 2px solid #667eea !important;
+                border-radius: 6px !important;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+            }
+
+            .timeline-marker {
+                display: none !important;
+            }
+
+            .timeline-content {
+                cursor: default !important;
+            }
+
+            .timeline-content:hover {
+                transform: none !important;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+            }
+
+            .phase-number {
+                background: #667eea !important;
+                color: white !important;
+                padding: 4px 12px !important;
+                border-radius: 15px !important;
+                font-weight: bold !important;
+                margin-bottom: 8px !important;
+                display: inline-block !important;
+                font-size: 0.85em !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .timeline-content h2 {
+                color: #333 !important;
+                margin-bottom: 5px !important;
+                font-size: 1.3em !important;
+                page-break-after: avoid !important;
+            }
+
+            .timeline-content p {
+                color: #666 !important;
+                line-height: 1.5 !important;
+                margin-bottom: 0 !important;
+                font-size: 0.95em !important;
+            }
+
+            /* MOSTRAR TODOS LOS MODALES EN IMPRESIÓN - COMPACTO */
+            body .modal,
+            body .modal.active {
+                display: block !important;
+                position: relative !important;
+                background: white !important;
+                width: 100% !important;
+                height: auto !important;
+                overflow: visible !important;
+                z-index: auto !important;
+                left: auto !important;
+                top: auto !important;
+                margin: 0 0 15px 0 !important;
+                padding: 0 !important;
+                page-break-after: auto !important;
+                page-break-inside: avoid !important;
+                animation: none !important;
+            }
+
+            body .modal:last-child {
+                page-break-after: auto !important;
+                margin-bottom: 0 !important;
+            }
+
+            .modal-content {
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                border-radius: 0 !important;
+                max-height: none !important;
+                overflow: visible !important;
+                page-break-inside: avoid !important;
+                border: 2px solid #667eea !important;
+            }
+
+            .modal-header {
+                background: #667eea !important;
+                color: white !important;
+                padding: 12px 15px !important;
+                border-radius: 0 !important;
+                page-break-after: avoid !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .modal-header h2 {
+                color: white !important;
+                font-size: 1.4em !important;
+                margin: 0 !important;
+                page-break-after: avoid !important;
+            }
+
+            .phase-tag {
+                background: rgba(255, 255, 255, 0.3) !important;
+                color: white !important;
+                font-size: 0.85em !important;
+                padding: 3px 10px !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .modal-body {
+                padding: 15px !important;
+                page-break-inside: avoid !important;
+            }
+
+            /* IMÁGENES EN IMPRESIÓN - COMPACTO */
+            .image-container {
+                margin-bottom: 10px !important;
+                page-break-inside: avoid !important;
+                border: 1px solid #ddd !important;
+                border-radius: 4px !important;
+                overflow: hidden !important;
+                background: white !important;
+            }
+
+            .image-example {
+                width: 100% !important;
+                height: auto !important;
+                max-height: 250px !important;
+                object-fit: contain !important;
+                display: block !important;
+                page-break-inside: avoid !important;
+            }
+
+            .modal-section {
+                page-break-inside: avoid !important;
+                margin-bottom: 10px !important;
+            }
+
+            .modal-section:last-child {
+                margin-bottom: 0 !important;
+            }
+
+            .modal-section h3 {
+                color: #667eea !important;
+                font-size: 1.1em !important;
+                border-bottom: 1px solid #e0e7ff !important;
+                margin-bottom: 8px !important;
+                padding-bottom: 4px !important;
+                page-break-after: avoid !important;
+            }
+
+            .modal-section p {
+                color: #444 !important;
+                line-height: 1.5 !important;
+                margin-bottom: 8px !important;
+                font-size: 0.9em !important;
+            }
+
+            .documents-grid {
+                display: grid !important;
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 8px !important;
+                page-break-inside: avoid !important;
+                margin-top: 8px !important;
+            }
+
+            .document-card {
+                background: #f8f9fa !important;
+                border: 1px solid #ddd !important;
+                padding: 8px !important;
+                border-radius: 4px !important;
+                page-break-inside: avoid !important;
+                box-shadow: none !important;
+                font-size: 0.85em !important;
+            }
+
+            .document-card:hover {
+                transform: none !important;
+                border-color: #ddd !important;
+            }
+
+            .document-card::before {
+                content: "📄" !important;
+                font-size: 1.2em !important;
+            }
+
+            .highlight-box {
+                background: #fff3cd !important;
+                border-left: 3px solid #ffc107 !important;
+                page-break-inside: avoid !important;
+                margin: 10px 0 !important;
+                padding: 8px !important;
+                font-size: 0.9em !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .highlight-box strong {
+                color: #f57c00 !important;
+            }
+
+            /* EVITAR PÁGINAS EN BLANCO - OPTIMIZADO */
+            @page {
+                size: A4;
+                margin: 0.8cm;
+            }
+
+            /* Estilos para pares timeline-item + modal - COMPACTO */
+            .timeline-item.print-paired {
+                page-break-after: avoid !important;
+                margin-bottom: 0 !important;
+                padding-bottom: 0 !important;
+            }
+
+            .modal.print-paired {
+                page-break-before: avoid !important;
+                margin-top: 0 !important;
+                margin-bottom: 20px !important;
+            }
+
+            .modal.print-paired:last-of-type {
+                margin-bottom: 0 !important;
+            }
+
+            /* Agrupar cada par para evitar cortes */
+            .timeline-item.print-paired + .modal.print-paired {
+                page-break-before: avoid !important;
+                margin-top: 0 !important;
+            }
+
+            /* Evitar cortes de contenido importante */
+            .image-container,
+            .modal-section,
+            .highlight-box {
+                orphans: 2 !important;
+                widows: 2 !important;
+            }
+
+            /* Asegurar que no haya espacios en blanco grandes */
+            .modal-body {
+                min-height: auto !important;
+            }
+
+            /* Mejorar el espaciado en modales */
+            .modal-body > *:first-child {
+                margin-top: 0 !important;
+            }
+
+            .modal-body > *:last-child {
+                margin-bottom: 0 !important;
+            }
+
+            /* Asegurar que las imágenes no causen páginas en blanco */
+            img {
+                max-width: 100% !important;
+                height: auto !important;
+                page-break-inside: avoid !important;
+            }
+
+            /* Reducir espacios generales */
+            .info-box {
+                margin-bottom: 15px !important;
+                padding: 15px !important;
+            }
+
+            h1 {
+                margin-bottom: 8px !important;
+            }
+
+            .subtitle {
+                margin-bottom: 15px !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .modal-navigation {
+                padding: 15px 20px;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .nav-button {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .timeline::before {
+                left: 30px;
+            }
+
+            .timeline-marker {
+                left: 30px;
+            }
+
+            .timeline-item:nth-child(odd) .timeline-content,
+            .timeline-item:nth-child(even) .timeline-content {
+                width: calc(100% - 80px);
+                margin-left: 80px;
+                margin-right: 0;
+                padding: 20px;
+                text-align: left;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .modal-content {
+                width: 95%;
+                margin: 5% auto;
+            }
+
+            .modal-body {
+                padding: 20px;
+            }
+
+            .documents-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .print-button {
+                bottom: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                font-size: 1em;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>📊 Ciclo Contable</h1>
+        <p class="subtitle">Conjunto de fases para obtener información económica y financiera</p>
+
+        <div class="info-box">
+            <h2>¿Qué es el Ciclo Contable?</h2>
+            <p>Es el conjunto de fases que requiere información económica y financiera en un periodo de tiempo
+                determinado. Permite conocer cómo va la empresa y tomar decisiones necesarias de manera informada.</p>
+            <div class="periods">
+                <strong>Períodos comunes:</strong> Anual (más común), Bimensual, Trimestral, Cuatrimestral, Semestral
+            </div>
+        </div>
+
+        <div class="timeline">
+            <!-- ETAPA 1: APERTURA -->
+            <div class="timeline-item" onclick="openModal('modal1')">
+                <div class="timeline-marker"></div>
+                <div class="timeline-content">
+                    <span class="phase-number">ETAPA 1</span>
+                    <h2>🚀 Apertura</h2>
+                    <p>Inicia la empresa o se inicia el periodo contable financiero de una empresa establecida.</p>
+                    <span class="click-hint">👆 Click para ver más detalles</span>
+                </div>
+            </div>
+
+            <!-- ETAPA 2: REGISTRO -->
+            <div class="timeline-item" onclick="openModal('modal2')">
+                <div class="timeline-marker"></div>
+                <div class="timeline-content">
+                    <span class="phase-number">ETAPA 2</span>
+                    <h2>📝 Movimiento y Registro</h2>
+                    <p>Se registran de manera cronológica todas las transacciones económicas y financieras.</p>
+                    <span class="click-hint">👆 Click para ver más detalles</span>
+                </div>
+            </div>
+
+            <!-- ETAPA 3: DATOS MERCANTILES -->
+            <div class="timeline-item" onclick="openModal('modal3')">
+                <div class="timeline-marker"></div>
+                <div class="timeline-content">
+                    <span class="phase-number">ETAPA 3</span>
+                    <h2>📋 Datos Mercantiles</h2>
+                    <p>Documentos que respaldan las operaciones comerciales clasificados en negociables y no
+                        negociables.</p>
+                    <span class="click-hint">👆 Click para ver más detalles</span>
+                </div>
+            </div>
+
+            <!-- ETAPA 4: BALANCE DE COMPROBACIÓN -->
+            <div class="timeline-item" onclick="openModal('modal4')">
+                <div class="timeline-marker"></div>
+                <div class="timeline-content">
+                    <span class="phase-number">ETAPA 4</span>
+                    <h2>⚖️ Balance de Comprobación</h2>
+                    <p>Verificación de que todos los registros del Libro Diario están correctamente balanceados.</p>
+                    <span class="click-hint">👆 Click para ver más detalles</span>
+                </div>
+            </div>
+
+            <!-- ETAPA 5: LIBRO MAYOR -->
+            <div class="timeline-item" onclick="openModal('modal5')">
+                <div class="timeline-marker"></div>
+                <div class="timeline-content">
+                    <span class="phase-number">ETAPA 5</span>
+                    <h2>📚 Libro Mayor</h2>
+                    <p>Permite realizar ajustes contables y organiza las transacciones por cuenta contable.</p>
+                    <span class="click-hint">👆 Click para ver más detalles</span>
+                </div>
+            </div>
+
+            <!-- ETAPA 6: CIERRE -->
+            <div class="timeline-item" onclick="openModal('modal6')">
+                <div class="timeline-marker"></div>
+                <div class="timeline-content">
+                    <span class="phase-number">ETAPA 6</span>
+                    <h2>🏁 Cierre del Ciclo</h2>
+                    <p>Finalización del periodo contable donde se elaboran los estados financieros finales.</p>
+                    <span class="click-hint">👆 Click para ver más detalles</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 1: APERTURA -->
+    <div id="modal1" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeModal('modal1')">&times;</span>
+                <span class="phase-tag">ETAPA 1</span>
+                <h2>🚀 Apertura del Ciclo Contable</h2>
+            </div>
+            <div class="modal-body">
+                <div class="image-container">
+                    <img src="https://github.com/Ismael-1105/Ismael-1105.github.io/blob/main/Imagen%20de%20WhatsApp%202025-11-11%20a%20las%2011.00.21_64a9e7e1.jpg?raw=true"
+                        alt="Ejemplo de Libro Diario o Asientos Contables" class="image-example">
+                </div>
+
+
+                <div class="modal-section">
+                    <h3>¿Qué es la Apertura?</h3>
+                    <p>La apertura es el punto de partida del ciclo contable. Ocurre cuando inicia una nueva empresa o
+                        cuando se inicia un nuevo periodo contable en una empresa ya establecida. Es fundamental para
+                        establecer la situación financiera inicial.</p>
+                </div>
+
+                <div class="modal-section">
+                    <h3>Componentes Principales</h3>
+                    <div class="documents-grid">
+                        <div class="document-card">
+                            <strong>Activo</strong><br>
+                            <small>Bienes y derechos de la empresa</small>
+                        </div>
+                        <div class="document-card">
+                            <strong>Pasivo</strong><br>
+                            <small>Obligaciones y deudas</small>
+                        </div>
+                        <div class="document-card">
+                            <strong>Patrimonio</strong><br>
+                            <small>Capital y reservas</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="highlight-box">
+                    <strong>Importante:</strong> El Balance General debe cumplir con la ecuación contable fundamental:
+                    ACTIVO = PASIVO + PATRIMONIO
+                </div>
+            </div>
+            <div class="modal-navigation">
+                <button class="nav-button prev" onclick="navigateModal('modal1', -1)" disabled>Anterior</button>
+                <div class="modal-counter">Etapa 1 de 6</div>
+                <button class="nav-button next" onclick="navigateModal('modal1', 1)">Siguiente</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: MOVIMIENTO -->
+    <div id="modal2" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeModal('modal2')">&times;</span>
+                <span class="phase-tag">ETAPA 2</span>
+                <h2>📝 Movimiento y Registro de Transacciones</h2>
+            </div>
+            <div class="modal-body">
+                <div class="image-container">
+                    <img src="https://raw.githubusercontent.com/Ismael-1105/Ismael-1105.github.io/main/Imagen%20de%20WhatsApp%202025-11-11%20a%20las%2011.00.21_bf7e9268.jpg"
+                        alt="Ejemplo de Libro Diario o Asientos Contables" class="image-example">
+                </div>
+
+                <div class="modal-section">
+                    <h3>Descripción</h3>
+                    <p>Durante esta etapa se registran de manera cronológica todas las transacciones económicas y
+                        financieras que realiza la empresa durante el periodo contable. Cada transacción debe estar
+                        respaldada por documentos que la evidencien.</p>
+                </div>
+
+                <div class="modal-section">
+                    <h3>Documentos Utilizados</h3>
+                    <div class="documents-grid">
+                        <div class="document-card">
+                            <strong>Hoja de Ingresos y Gastos</strong>
+                        </div>
+                        <div class="document-card">
+                            <strong>Libro Diario</strong>
+                        </div>
+                        <div class="document-card">
+                            <strong>Comprobantes</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="highlight-box">
+                    <strong>Principio Clave:</strong> Todas las transacciones deben registrarse en orden cronológico y
+                    con documentación de respaldo adecuada.
+                </div>
+            </div>
+            <div class="modal-navigation">
+                <button class="nav-button prev" onclick="navigateModal('modal2', -1)">Anterior</button>
+                <div class="modal-counter">Etapa 2 de 6</div>
+                <button class="nav-button next" onclick="navigateModal('modal2', 1)">Siguiente</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: DATOS MERCANTILES -->
+    <div id="modal3" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeModal('modal3')">&times;</span>
+                <span class="phase-tag">ETAPA 3</span>
+                <h2>📋 Datos Mercantiles</h2>
+            </div>
+            <div class="modal-body">
+                <div class="image-container">
+                    <img src="https://github.com/Ismael-1105/Ismael-1105.github.io/blob/main/Imagen%20de%20WhatsApp%202025-11-11%20a%20las%2011.00.22_c832740b.jpg?raw=true"
+                        alt="Ejemplo de Libro Diario o Asientos Contables" class="image-example">
+                </div>
+
+
+                <div class="modal-section">
+                    <h3>Documentos Negociables</h3>
+                    <p>Son títulos valor que pueden ser transferidos de una persona a otra y tienen valor comercial:</p>
+                    <div class="documents-grid">
+                        <div class="document-card">
+                            <strong>Cheque</strong><br>
+                            <small>Orden de pago bancario</small>
+                        </div>
+                        <div class="document-card">
+                            <strong>Pagaré</strong><br>
+                            <small>Promesa de pago</small>
+                        </div>
+                        <div class="document-card">
+                            <strong>Letra de Cambio</strong><br>
+                            <small>Orden de pago futura</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-section">
+                    <h3>Documentos No Negociables</h3>
+                    <p>Comprobantes de respaldo de transacciones comerciales:</p>
+                    <div class="documents-grid">
+                        <div class="document-card">
+                            <strong>Facturas</strong>
+                        </div>
+                        <div class="document-card">
+                            <strong>Notas de Venta</strong>
+                        </div>
+                        <div class="document-card">
+                            <strong>Recibos</strong>
+                        </div>
+                        <div class="document-card">
+                            <strong>Guía de Remisión</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-navigation">
+                <button class="nav-button prev" onclick="navigateModal('modal3', -1)">Anterior</button>
+                <div class="modal-counter">Etapa 3 de 6</div>
+                <button class="nav-button next" onclick="navigateModal('modal3', 1)">Siguiente</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: BALANCE DE COMPROBACIÓN -->
+    <div id="modal4" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeModal('modal4')">&times;</span>
+                <span class="phase-tag">ETAPA 4</span>
+                <h2>⚖️ Balance de Comprobación</h2>
+            </div>
+            <div class="modal-body">
+                <div class="image-container">
+                    <img src="https://github.com/Ismael-1105/Ismael-1105.github.io/blob/main/Imagen%20de%20WhatsApp%202025-11-11%20a%20las%2011.00.21_d80dbd82.jpg?raw=true"
+                        alt="Ejemplo de Libro Diario o Asientos Contables" class="image-example">
+                </div>
+
+                <div class="modal-section">
+                    <h3>Objetivo</h3>
+                    <p>Verificar que todos los registros del Libro Diario están correctamente balanceados. Es una
+                        herramienta de control que asegura que no existan errores aritméticos en los registros
+                        contables.</p>
+                </div>
+
+                <div class="modal-section">
+                    <h3>Proceso de Verificación</h3>
+                    <div class="documents-grid">
+                        <div class="document-card">
+                            <strong>Suma de Débitos</strong><br>
+                            <small>Total de cargos</small>
+                        </div>
+                        <div class="document-card">
+                            <strong>Suma de Créditos</strong><br>
+                            <small>Total de abonos</small>
+                        </div>
+                        <div class="document-card">
+                            <strong>Verificación de Saldos</strong><br>
+                            <small>Comprobación</small>
+                        </div>
+                        <div class="document-card">
+                            <strong>Detección de Errores</strong><br>
+                            <small>Correcciones</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="highlight-box">
+                    <strong>Regla de Oro:</strong> La suma de todos los débitos debe ser igual a la suma de todos los
+                    créditos. Si no coinciden, hay un error que debe corregirse.
+                </div>
+            </div>
+            <div class="modal-navigation">
+                <button class="nav-button prev" onclick="navigateModal('modal4', -1)">Anterior</button>
+                <div class="modal-counter">Etapa 4 de 6</div>
+                <button class="nav-button next" onclick="navigateModal('modal4', 1)">Siguiente</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 5: LIBRO MAYOR -->
+    <div id="modal5" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeModal('modal5')">&times;</span>
+                <span class="phase-tag">ETAPA 5</span>
+                <h2>📚 Libro Mayor y Ajustes</h2>
+            </div>
+            <div class="modal-body">
+                <div class="image-container">
+                    <img src="https://github.com/Ismael-1105/Ismael-1105.github.io/blob/main/Imagen%20de%20WhatsApp%202025-11-11%20a%20las%2011.00.21_866907b2.jpg?raw=true"
+                        alt="Ejemplo de Libro Diario o Asientos Contables" class="image-example">
+                </div>
+
+
+                <div class="modal-section">
+                    <h3>Función del Libro Mayor</h3>
+                    <p>Al final del año, el Libro Mayor permite realizar ajustes contables que no se hicieron en los
+                        pasos anteriores. Organiza todas las transacciones por cuenta contable específica, facilitando
+                        el análisis de cada cuenta.</p>
+                </div>
+
+                <div class="modal-section">
+                    <h3>Funciones Principales</h3>
+                    <div class="documents-grid">
+                        <div class="document-card">
+                            <strong>Clasificación por Cuentas</strong>
+                        </div>
+                        <div class="document-card">
+                            <strong>Ajustes Contables</strong>
+                        </div>
+                        <div class="document-card">
+                            <strong>Corrección de Errores</strong>
+                        </div>
+                        <div class="document-card">
+                            <strong>Preparación Estados Financieros</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="highlight-box">
+                    <strong>Nota Importante:</strong> Los ajustes pueden incluir depreciaciones, provisiones,
+                    acumulaciones y correcciones necesarias para presentar la situación real de la empresa.
+                </div>
+            </div>
+            <div class="modal-navigation">
+                <button class="nav-button prev" onclick="navigateModal('modal5', -1)">Anterior</button>
+                <div class="modal-counter">Etapa 5 de 6</div>
+                <button class="nav-button next" onclick="navigateModal('modal5', 1)">Siguiente</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 6: CIERRE -->
+    <div id="modal6" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeModal('modal6')">&times;</span>
+                <span class="phase-tag">ETAPA 6</span>
+                <h2>🏁 Cierre del Ciclo Contable</h2>
+            </div>
+            <div class="modal-body">
+                <div class="image-container">
+                    <img src="https://github.com/Ismael-1105/Ismael-1105.github.io/blob/main/Imagen%20de%20WhatsApp%202025-11-11%20a%20las%2011.00.22_0d949fb3.jpg?raw=true"
+                        alt="Ejemplo de Libro Diario o Asientos Contables" class="image-example">
+                </div>
+
+
+                <div class="modal-section">
+                    <h3>Finalización del Periodo</h3>
+                    <p>La etapa de cierre es la culminación del ciclo contable. En esta fase se elaboran los estados
+                        financieros que resumen toda la actividad económica y financiera del periodo, proporcionando
+                        información crucial para la toma de decisiones.</p>
+                </div>
+
+                <div class="modal-section">
+                    <h3>Estados Financieros Principales</h3>
+                    <div class="documents-grid">
+                        <div class="document-card">
+                            <strong>Balance General</strong><br>
+                            <small>Situación financiera</small>
+                        </div>
+                        <div class="document-card">
+                            <strong>Estado de Resultados</strong><br>
+                            <small>Ganancias y pérdidas</small>
+                        </div>
+                        <div class="document-card">
+                            <strong>Flujo de Efectivo</strong><br>
+                            <small>Movimientos de caja</small>
+                        </div>
+                        <div class="document-card">
+                            <strong>Cambios en el Patrimonio</strong><br>
+                            <small>Evolución del capital</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="highlight-box">
+                    <strong>Resultado Final:</strong> Los estados financieros proporcionan una visión completa del
+                    desempeño de la empresa y sirven como base para la planificación del siguiente periodo contable.
+                </div>
+            </div>
+            <div class="modal-navigation">
+                <button class="nav-button prev" onclick="navigateModal('modal6', -1)">Anterior</button>
+                <div class="modal-counter">Etapa 6 de 6</div>
+                <button class="nav-button next" onclick="navigateModal('modal6', 1)" disabled>Siguiente</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        function navigateModal(currentModalId, direction) {
+            // Extraer el número del modal actual
+            const currentNum = parseInt(currentModalId.replace('modal', ''));
+            const nextNum = currentNum + direction;
+
+            // Validar que el siguiente modal existe (1-6)
+            if (nextNum >= 1 && nextNum <= 6) {
+                const nextModalId = 'modal' + nextNum;
+
+                // Cerrar modal actual
+                closeModal(currentModalId);
+
+                // Pequeño delay para suavizar la transición
+                setTimeout(() => {
+                    openModal(nextModalId);
+                }, 100);
+            }
+        }
+
+        // Cerrar modal al hacer click fuera del contenido
+        window.onclick = function (event) {
+            const modals = document.getElementsByClassName('modal');
+            for (let modal of modals) {
+                if (event.target == modal) {
+                    modal.classList.remove('active');
+                    document.body.style.overflow = 'auto';
+                }
+            }
+        }
+
+        // Cerrar modal con tecla ESC
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                const modals = document.getElementsByClassName('modal');
+                for (let modal of modals) {
+                    modal.classList.remove('active');
+                }
+                document.body.style.overflow = 'auto';
+            }
+        });
+
+        // Navegación con flechas del teclado
+        document.addEventListener('keydown', function (event) {
+            const activeModal = document.querySelector('.modal.active');
+            if (activeModal) {
+                const modalId = activeModal.id;
+
+                if (event.key === 'ArrowRight') {
+                    // Flecha derecha: siguiente modal
+                    navigateModal(modalId, 1);
+                } else if (event.key === 'ArrowLeft') {
+                    // Flecha izquierda: modal anterior
+                    navigateModal(modalId, -1);
+                }
+            }
+        });
+
+        // Variables para almacenar el estado original del DOM
+        let originalModalPositions = [];
+        let timelineContainer = null;
+
+        // Reorganizar DOM para impresión: cada etapa seguida de su modal
+        window.addEventListener('beforeprint', function() {
+            const timeline = document.querySelector('.timeline');
+            const timelineItems = document.querySelectorAll('.timeline-item');
+            const modals = document.querySelectorAll('.modal');
+            
+            if (!timeline || timelineItems.length === 0) return;
+
+            // Guardar posiciones originales de los modales
+            originalModalPositions = [];
+            modals.forEach(function(modal) {
+                originalModalPositions.push({
+                    element: modal,
+                    nextSibling: modal.nextSibling,
+                    parent: modal.parentNode
+                });
+            });
+
+            // Mover cada modal justo después de su timeline-item correspondiente
+            // Hacerlo en orden inverso para no afectar las posiciones de los siguientes items
+            for (let i = timelineItems.length - 1; i >= 0; i--) {
+                const item = timelineItems[i];
+                const modalNumber = i + 1;
+                const modal = document.getElementById('modal' + modalNumber);
+                
+                if (modal) {
+                    // Agregar clases para estilos de impresión
+                    item.classList.add('print-paired');
+                    modal.classList.add('print-paired');
+                    
+                    // Mostrar el modal
+                    modal.style.display = 'block';
+                    modal.style.position = 'relative';
+                    modal.style.zIndex = 'auto';
+                    modal.style.width = '100%';
+                    modal.style.height = 'auto';
+                    modal.style.background = 'white';
+                    modal.setAttribute('data-print', 'true');
+                    
+                    // Insertar el modal justo después del timeline-item
+                    if (item.nextSibling) {
+                        item.parentNode.insertBefore(modal, item.nextSibling);
+                    } else {
+                        item.parentNode.appendChild(modal);
+                    }
+                }
+            }
+        });
+
+        // Restaurar el estado original después de imprimir
+        window.addEventListener('afterprint', function() {
+            // Restaurar modales a sus posiciones originales
+            originalModalPositions.forEach(function(pos) {
+                if (pos.parent && pos.element) {
+                    // Remover clases de impresión
+                    pos.element.classList.remove('print-paired');
+                    pos.element.removeAttribute('data-print');
+                    
+                    // Restaurar estilos solo si no tiene la clase active
+                    if (!pos.element.classList.contains('active')) {
+                        pos.element.style.display = '';
+                        pos.element.style.position = '';
+                        pos.element.style.zIndex = '';
+                        pos.element.style.width = '';
+                        pos.element.style.height = '';
+                        pos.element.style.background = '';
+                    }
+                    
+                    // Restaurar posición original
+                    if (pos.nextSibling) {
+                        pos.parent.insertBefore(pos.element, pos.nextSibling);
+                    } else {
+                        pos.parent.appendChild(pos.element);
+                    }
+                }
+            });
+
+            // Remover clases de timeline-items
+            const timelineItems = document.querySelectorAll('.timeline-item');
+            timelineItems.forEach(function(item) {
+                item.classList.remove('print-paired');
+            });
+
+            originalModalPositions = [];
+        });
+    </script>
+</body>
+
+</html>
